@@ -251,3 +251,371 @@ The goal of this project is to apply **unsupervised machine learning techniques*
 </table>
 <br>
 </details>
+---
+
+# 🧠 Project Workflow & Methodology
+
+---
+
+## 🔎 1️⃣ Data Exploration & Initial Observations
+
+Before applying any clustering algorithm, a thorough **Exploratory Data Analysis (EDA)** was conducted.
+
+### ✔ Dataset Size
+
+* **Rows:** 8,950 customers
+* **Features:** 18 behavioral financial features
+
+### ✔ Duplicate Checks
+
+Three levels of duplicate validation were performed:
+
+* 🔹 Full row duplicates → **None found**
+* 🔹 Duplicate `CUST_ID` values → **None found**
+* 🔹 Duplicate rows ignoring `CUST_ID` → **None found**
+
+The dataset was confirmed clean in terms of repetition.
+
+---
+
+## ⚠ 2️⃣ Missing Values Handling
+
+Two columns had missing values:
+
+* `CREDIT_LIMIT`
+* `MINIMUM_PAYMENTS`
+
+### 🔹 Business Logic Handling (Smart Fix)
+
+For `MINIMUM_PAYMENTS`:
+
+Many missing rows had:
+
+```python
+PAYMENTS == 0
+```
+
+This means the customer did not pay anything → logically minimum payment is **0**.
+
+✔ 240 out of 313 missing values were handled using this logic.
+
+---
+
+### 🔹 Iterative Imputer
+
+Remaining missing numerical values were handled using:
+
+```python
+IterativeImputer()
+```
+
+✔ Regression-based imputation
+✔ Preserves feature relationships
+✔ More accurate than mean/median imputation
+
+After imputation:
+
+```python
+X[X < 0] = 0
+```
+
+Negative values were clipped to zero.
+
+✔ Final Result → **No Missing Values**
+
+---
+
+## 📈 3️⃣ Data Distribution & Outlier Analysis
+
+### 🔹 KDE Distributions
+
+Feature distributions were analyzed before and after transformation.
+
+### 🔹 Boxplots
+
+Boxplots revealed:
+
+* Strong right skewness
+* Presence of extreme outliers
+* Large gaps between Q3 and Max in many financial columns
+
+---
+
+## 🔄 4️⃣ Log Transformation (log1p)
+
+To handle skewness and extreme values:
+
+```python
+np.log1p()
+```
+
+Applied to:
+
+* BALANCE
+* PURCHASES
+* ONEOFF_PURCHASES
+* INSTALLMENTS_PURCHASES
+* CASH_ADVANCE
+* CASH_ADVANCE_TRX
+* PURCHASES_TRX
+* CREDIT_LIMIT
+* PAYMENTS
+* MINIMUM_PAYMENTS
+
+### ✔ Result:
+
+* Reduced skewness
+* Outliers became more compact
+* Distributions became more stable
+* No negative values introduced
+
+---
+
+## 🔗 5️⃣ Correlation Analysis
+
+Correlation heatmaps and scatter analysis were performed to:
+
+* Detect strong feature relationships
+* Understand behavioral dependencies
+* Prepare for clustering
+
+Visualization tools used:
+
+* Seaborn
+* Plotly
+
+---
+
+# ⚖ 6️⃣ Feature Scaling
+
+Since the dataset contains extreme values:
+
+```python
+RobustScaler()
+```
+
+was selected instead of StandardScaler.
+
+✔ Robust to outliers
+✔ Uses median and IQR
+✔ More stable for financial data
+
+---
+
+# 🌌 7️⃣ Dimensionality Reduction
+
+To visualize clustering structure:
+
+### 🔹 t-SNE (2D)
+
+Used for main visualization.
+
+### 🔹 t-SNE (3D)
+
+Used for enhanced visual separation.
+
+This helped visually inspect cluster separability.
+
+---
+
+# 🤖 8️⃣ Clustering Models
+
+---
+
+## 🔵 8.1 K-Means Clustering
+
+* Tested k = 1 → 12
+* Used **Elbow Method**
+* Selected: **k = 5**
+
+Visualization:
+
+* WCSS (Inertia) Curve
+* t-SNE colored clusters
+
+---
+
+## 🟢 8.2 Gaussian Mixture Model (GMM)
+
+* n_components = 5
+* n_init = 5
+* max_iter = 2000
+
+### ✔ Observation:
+
+GMM produced a **more uniform cluster distribution** compared to KMeans.
+
+Clusters were slightly overlapping but visually coherent.
+
+### ✅ Final Model Choice:
+
+**GMM (k = 5)**
+
+---
+
+# 📊 9️⃣ Cluster Profiling
+
+Profiling method used:
+
+```python
+groupby("GMM_k5").median()
+```
+
+Then:
+
+* Compared cluster medians to overall median
+* Calculated deviation
+* Extracted top differentiating features
+* Applied Z-score scaling
+* Generated heatmaps
+
+Two profiling visualizations created:
+
+1. All features heatmap
+2. Top differentiating features heatmap
+
+---
+
+# 🧩 🔟 Final Customer Segments (GMM - 5 Clusters)
+
+---
+
+## 🟠 Cluster 0 — Low Payers (Risk Watch)
+
+**Behavior:**
+
+* Low PAYMENTS
+* Low MINIMUM_PAYMENTS
+* Mid CASH_ADVANCE
+* Mid PURCHASES
+
+**Business Meaning:**
+Customers paying little relative to usage.
+
+**Action:**
+
+* Monitor closely
+* Payment reminders
+* Risk scoring updates
+
+---
+
+## 🔵 Cluster 1 — High Activity Heavy Users (Top Value)
+
+**Behavior:**
+
+* High PURCHASES & PURCHASES_TRX
+* High BALANCE
+* High PAYMENTS
+* High CASH_ADVANCE
+
+**Business Meaning:**
+Very active users, high revenue generators, but need monitoring due to cash usage.
+
+**Action:**
+
+* VIP retention programs
+* Premium rewards
+* Smart credit limit increase
+* Installment offers
+
+---
+
+## 🟢 Cluster 2 — Low Balance Transactors (Healthy)
+
+**Behavior:**
+
+* Very low BALANCE
+* Low CASH_ADVANCE
+* Mid PURCHASES
+
+**Business Meaning:**
+Financially responsible customers.
+
+**Action:**
+
+* Loyalty campaigns
+* Cashback programs
+* Encourage moderate spending growth
+
+---
+
+## 🟣 Cluster 3 — Big One-Off Shoppers
+
+**Behavior:**
+
+* High ONEOFF_PURCHASES
+* Low CASH_ADVANCE
+* Mid BALANCE
+
+**Business Meaning:**
+Large occasional purchases (travel, electronics).
+
+**Action:**
+
+* Installment plans
+* Seasonal campaigns
+* Travel partnerships
+
+---
+
+## 🔴 Cluster 4 — Cash Advance Driven (High Risk)
+
+**Behavior:**
+
+* High CASH_ADVANCE
+* High CASH_ADVANCE_TRX
+* Low PURCHASES
+
+**Business Meaning:**
+Cash-dependent behavior → financially stressed.
+
+**Action:**
+
+* Risk controls
+* Credit restrictions
+* Offer structured personal loans
+
+---
+
+# 📌 Final Summary of Findings
+
+✔ Dataset cleaned (no duplicates)
+✔ Smart missing value handling (business logic + IterativeImputer)
+✔ Log transformation reduced skewness
+✔ RobustScaler used due to outliers
+✔ KMeans tested via Elbow (k=5)
+✔ GMM selected as final model
+✔ 5 clear customer segments identified
+✔ Business-driven cluster interpretation
+
+---
+
+# 🚀 Optional Enhancements (Future Work)
+
+* Use Silhouette Score for formal validation
+* Use BIC/AIC to optimize GMM components
+* Apply PCA before t-SNE
+* Try DBSCAN
+* Perform feature engineering
+* Deploy segmentation into production scoring system
+
+---
+
+# 🏁 Conclusion
+
+This project demonstrates how **unsupervised machine learning** can transform raw financial behavioral data into actionable customer intelligence.
+
+Through structured preprocessing, transformation, clustering, and profiling:
+
+💳 Customers were segmented into meaningful behavioral groups
+📊 Insights were translated into business strategies
+📈 Risk and value segments were clearly identified
+
+---
+
+# ⭐ If You Found This Useful
+
+Consider starring the repository ⭐
+
+---
