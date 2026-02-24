@@ -28,6 +28,7 @@
 
 This repository contains the full implementation of the **Customer Segmentation for Credit Card Customers** project.  
 The goal of this project is to apply **unsupervised machine learning techniques** to segment customers based on their financial behavior and credit usage patterns.
+You can find the project notebook on Google Colab [here](https://colab.research.google.com/drive/14-6GPS35Bsii0HBtGa5mhj5JpI8YWKrx?usp=sharing)
 
 ---
 
